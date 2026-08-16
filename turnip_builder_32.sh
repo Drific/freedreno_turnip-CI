@@ -78,20 +78,20 @@ build_lib_for_android(){
 	export LDFLAGS="-fuse-ld=lld"
 
 	echo "Generating build files ..." $'\n'
-		cat <<EOF >"android-aarch64.txt"
+		cat <<EOF >"android-aarch32.txt"
 [binaries]
 ar = '$ndk/llvm-ar'
-c = ['ccache', '$ndk/aarch64-linux-android$sdkver-clang']
-cpp = ['ccache', '$ndk/aarch64-linux-android$sdkver-clang++', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '--start-no-unused-arguments', '-static-libstdc++', '--end-no-unused-arguments']
+c = ['ccache', '$ndk/aarch32-linux-android$sdkver-clang']
+cpp = ['ccache', '$ndk/aarch32-linux-android$sdkver-clang++', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '--start-no-unused-arguments', '-static-libstdc++', '--end-no-unused-arguments']
 c_ld = '$ndk/ld.lld'
 cpp_ld = '$ndk/ld.lld'
-strip = '$ndk/aarch64-linux-android-strip'
+strip = '$ndk/aarch32-linux-android-strip'
 pkg-config = ['env', 'PKG_CONFIG_LIBDIR=$ndk/pkg-config', '/usr/bin/pkg-config']
 
 [host_machine]
 system = 'android'
-cpu_family = 'aarch64'
-cpu = 'armv8'
+cpu_family = 'aarch32'
+cpu = 'armv7'
 endian = 'little'
 EOF
 
@@ -109,8 +109,8 @@ cpu = 'x86_64'
 endian = 'little'
 EOF
 
-		meson setup build-android-aarch64 \
-			--cross-file "android-aarch64.txt" \
+		meson setup build-android-aarch32 \
+			--cross-file "android-aarch32.txt" \
 			--native-file "native.txt" \
 			-Dbuildtype=release \
 			-Dplatforms=android \
@@ -127,22 +127,22 @@ EOF
 			-Degl=disabled &> "$workdir/meson_log"
 
 	echo "Compiling build files ..." $'\n'
-		ninja -C build-android-aarch64 &> "$workdir/ninja_log"
+		ninja -C build-android-aarch32 &> "$workdir/ninja_log"
 
-	if ! [ -a "$workdir"/mesa-main/build-android-aarch64/src/freedreno/vulkan/libvulkan_freedreno.so ]; then
+	if ! [ -a "$workdir"/mesa-main/build-android-aarch32/src/freedreno/vulkan/libvulkan_freedreno.so ]; then
 		echo -e "$red Build failed! $nocolor" && exit 1
 	fi
 }
 
 port_lib_for_magisk(){
 	echo "Using patchelf to match soname ..." $'\n'
-		cp "$workdir"/mesa-main/build-android-aarch64/src/freedreno/vulkan/libvulkan_freedreno.so "$workdir"
+		cp "$workdir"/mesa-main/build-android-aarch32/src/freedreno/vulkan/libvulkan_freedreno.so "$workdir"
 		cd "$workdir"
 		patchelf --set-soname vulkan.turnip.so libvulkan_freedreno.so
 		mv libvulkan_freedreno.so vulkan.turnip.so
 
 	echo "Prepare magisk module structure ..." $'\n'
-		p1="system/vendor/lib64/hw"
+		p1="system/vendor/lib/hw"
 		mkdir -p "$magiskdir" && cd "$_"
 		mkdir -p "$p1"
 
@@ -195,7 +195,7 @@ EOF
 
 		cat <<EOF >"customize.sh"
 set_perm_recursive \$MODPATH/system 0 0 0755 0644
-set_perm \$MODPATH/system/vendor/lib64/hw/vulkan.turnip.so 0 0 0644
+set_perm \$MODPATH/system/vendor/lib/hw/vulkan.turnip.so 0 0 0644
 EOF
 
 	echo "Copy necessary files from work directory ..." $'\n'
@@ -212,7 +212,7 @@ EOF
 port_lib_for_adrenotools(){
 	libname=vulkan.freedreno.so
 	echo "Using patchelf to match soname" $'\n'
-		cp "$workdir"/mesa-main/build-android-aarch64/src/freedreno/vulkan/libvulkan_freedreno.so "$workdir"/$libname
+		cp "$workdir"/mesa-main/build-android-aarch32/src/freedreno/vulkan/libvulkan_freedreno.so "$workdir"/$libname
 		cd "$workdir"
 		patchelf --set-soname $libname $libname
 	echo "Preparing meta.json" $'\n'
