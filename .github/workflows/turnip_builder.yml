@@ -6,7 +6,7 @@ on:
   - cron: "20 5 1,15 * *"
 
 jobs:
-  start_building_turnip:
+  building_turnip_aarch64:
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v3
@@ -34,20 +34,46 @@ jobs:
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Logs and artifacts
+        name: Logs and aarch64 artifacts
         path: |
           turnip_workdir/ninja_log
           turnip_workdir/mesa-main/build-android-aarch64/meson-logs/meson-log.txt
           turnip_workdir/turnip.zip
           turnip_workdir/turnip_adrenotools.zip
 
-    - name: Release "turnip"
-      uses: softprops/action-gh-release@v1
+
+  building_turnip_aarch32:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Prepare environment
+      run: |
+        sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
+        sudo apt update
+        sudo apt build-dep mesa -y
+        sudo apt install meson-1.5 
+
+    - name: Execute build script
+      run: bash ./turnip_builder_32.sh
+
+    - name: Create update.json
+      run: |
+        cat <<EOF >"turnip_workdir/update.json"
+        {
+          "versionCode": "$(cat turnip_workdir/mesa-main/VERSION | tr -cd '0-9')",
+          "version": "$(cat turnip_workdir/mesa-main/VERSION)",
+          "zipUrl": "https://github.com/ilhan-athn7/freedreno_turnip-CI/releases/download/github_run/turnip.zip",
+          "changelog": "https://raw.githubusercontent.com/ilhan-athn7/freedreno_turnip-CI/refs/heads/main/changelog.md"
+        }
+
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v4
       with:
-        body: Turnip magisk module and driver package for adrenotools
-        tag_name: github_run
-        name: Weekly Action Release
-        files: |
-           turnip_workdir/update.json
-           turnip_workdir/turnip.zip
-           turnip_workdir/turnip_adrenotools.zip
+        name: Logs and aarch32 artifacts
+        path: |
+          turnip_workdir/ninja_log
+          turnip_workdir/mesa-main/build-android-aarch64/meson-logs/meson-log.txt
+          turnip_workdir/turnip.zip
+          turnip_workdir/turnip_adrenotools.zip
+
